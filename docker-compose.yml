@@ -1,0 +1,23 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: ai_data_store
+
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8742:8742"
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DB: ai_data_store
+      API_KEY: ${API_KEY}
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
