@@ -6,8 +6,6 @@ import uvicorn
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastmcp import FastMCP
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.config import settings
@@ -23,12 +21,21 @@ async def lifespan(server: FastMCP):
 mcp = FastMCP("AI Data Store", lifespan=lifespan)
 
 
-class BearerAuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Bearer ") or auth[7:] != settings.api_key:
-            return JSONResponse({"error": "Unauthorized"}, status_code=401)
-        return await call_next(request)
+class BearerAuthMiddleware:
+    """Pure ASGI middleware — does not buffer the response, safe for SSE streaming."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            auth = headers.get(b"authorization", b"").decode()
+            if not auth.startswith("Bearer ") or auth[7:] != settings.api_key:
+                response = JSONResponse({"error": "Unauthorized"}, status_code=401)
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
 
 
 def _format(doc: dict) -> dict:
