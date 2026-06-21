@@ -20,11 +20,7 @@ async def lifespan(server: FastMCP):
     await close_client()
 
 
-mcp = FastMCP(
-    "AI Data Store",
-    description="Store and retrieve data results produced by AI agents.",
-    lifespan=lifespan,
-)
+mcp = FastMCP("AI Data Store", lifespan=lifespan)
 
 
 class BearerAuthMiddleware(BaseHTTPMiddleware):
