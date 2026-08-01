@@ -83,3 +83,16 @@ tools=[{
 | `get_entry` | Fetch a single entry by ID |
 | `update_entry` | Update fields on an existing entry |
 | `delete_entry` | Remove an entry |
+
+## REST ingest endpoint
+
+For callers that can't speak MCP (e.g. shell/Python hook scripts), `POST /entries` on port `8742` is a plain HTTP equivalent of `create_entry`, using the same Bearer token auth:
+
+```bash
+curl -X POST http://<casaos-ip>:8742/entries \
+  -H "Authorization: Bearer <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"source": "finance-agent", "description": "Verdict - MSFT", "keywords": ["MSFT", "verdict"], "data": {}}'
+```
+
+Returns the created entry (`201`) or a `400` with an error message for a missing field or invalid JSON body.
