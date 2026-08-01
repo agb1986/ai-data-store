@@ -88,7 +88,7 @@ Run it with no argument to install the default `log_finance_entry.py`, or name a
 
 | Hook | Fires on | Logs |
 |------|----------|------|
-| `log_finance_entry.py` | Reads of `finance-agent`'s `skills/*/tmp/*.json` artifacts (verdict, debate, panel, check_stock, check_crypto, price history, portfolio, news) | A ticker/stage-aware description and keywords built from the artifact's content, e.g. `Verdict - MSFT (bear, medium confidence)` |
+| `log_finance_entry.py` | Bash calls in `finance-agent` whose stdout is the path to a known `skills/*/tmp/*.json` artifact (verdict, debate, panel, check_stock, check_crypto, price history, portfolio, news) — every artifact script in that repo prints just this path, so the hook reads the file straight off disk | A ticker/stage-aware description and keywords built from the artifact's content, e.g. `Verdict - MSFT (bear, medium confidence)` |
 
 ## MCP tools
 

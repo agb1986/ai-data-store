@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""PostToolUse hook: logs recognizable finance-agent artifacts to ai-data-store.
+"""PostToolUse hook: logs finance-agent artifacts to ai-data-store as they're produced.
 
 Registered globally in ~/.claude/settings.json so it fires on every tool call
-in every project, but it only acts on a Read of a known artifact file under
-finance-agent's skills/*/tmp/ — everything else is a silent no-op, so it adds
-no noise to the store and negligible latency to unrelated tool calls.
+in every project, but it only acts on a Bash call inside finance-agent whose
+stdout is the path to a known artifact under skills/*/tmp/ — every artifact
+script in this repo follows the convention of printing just that path, so
+this fires deterministically the moment an artifact is created, regardless
+of whether the agent later reads it back into its own context. (An earlier
+version hooked Read instead, which missed panel/debate stages entirely,
+since the trader skill only re-reads the final verdict file.) Everything
+else is a silent no-op, so it adds no noise to the store and negligible
+latency to unrelated tool calls.
 """
 import json
 import os
@@ -98,13 +104,16 @@ def main() -> None:
 
     if os.path.basename(event.get("cwd", "")) != "finance-agent":
         return
-    if event.get("tool_name") != "Read":
+    if event.get("tool_name") != "Bash":
         return
 
-    tool_input = event.get("tool_input") or {}
-    if isinstance(tool_input, str):
-        tool_input = json.loads(tool_input)
-    file_path = tool_input.get("file_path", "")
+    tool_response = event.get("tool_response") or {}
+    if isinstance(tool_response, str):
+        tool_response = json.loads(tool_response)
+    stdout = (tool_response.get("stdout") or "").strip()
+    if not stdout:
+        return
+    file_path = stdout.splitlines()[0].strip()
 
     match = ARTIFACT_RE.search(file_path)
     if not match:
@@ -120,13 +129,11 @@ def main() -> None:
     ticker = parts[0] if prefix in TICKER_PREFIXES else None
     period = parts[1] if prefix == "history" and len(parts) > 1 else None
 
-    tool_response = event.get("tool_response") or {}
-    if isinstance(tool_response, str):
-        tool_response = json.loads(tool_response)
-    raw_content = tool_response.get("file", {}).get("content")
-    if raw_content is None:
+    try:
+        with open(file_path) as f:
+            content = json.load(f)
+    except (OSError, json.JSONDecodeError):
         return
-    content = json.loads(raw_content)
 
     entry = {
         "source": "finance-agent",
@@ -134,8 +141,9 @@ def main() -> None:
         "keywords": build_keywords(prefix, skill_dir, ticker, period),
         "data": {
             "tool_name": event.get("tool_name"),
-            "tool_input": tool_input,
-            "tool_response": event.get("tool_response"),
+            "tool_input": event.get("tool_input"),
+            "artifact_path": file_path,
+            "artifact": content,
         },
     }
 
