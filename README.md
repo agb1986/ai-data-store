@@ -74,6 +74,22 @@ tools=[{
 }]
 ```
 
+## Claude Code hooks
+
+`hooks/` contains PostToolUse hook scripts that log agent activity into ai-data-store automatically, and `scripts/install_hook.sh` installs one into your global `~/.claude/settings.json`:
+
+```bash
+./scripts/install_hook.sh log_finance_entry.py
+```
+
+This copies the script to `~/.claude/hooks/` and registers it as a `command`-type `PostToolUse` hook, without touching any other hooks or settings already there — safe to re-run. It requires the `ai-data-store` MCP server to already be configured in `~/.claude.json` (see Laptop setup above), since the hook reads that config to find the server URL and API key.
+
+Run it with no argument to install the default `log_finance_entry.py`, or name a different script in `hooks/` to install that one instead. Hooks are self-filtering — each one only acts on the tool calls it recognizes and is a silent no-op otherwise, so it's safe to have installed even outside the project it targets.
+
+| Hook | Fires on | Logs |
+|------|----------|------|
+| `log_finance_entry.py` | Reads of `finance-agent`'s `skills/*/tmp/*.json` artifacts (verdict, debate, panel, check_stock, check_crypto, price history, portfolio, news) | A ticker/stage-aware description and keywords built from the artifact's content, e.g. `Verdict - MSFT (bear, medium confidence)` |
+
 ## MCP tools
 
 | Tool | Description |
