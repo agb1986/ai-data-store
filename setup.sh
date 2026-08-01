@@ -18,8 +18,13 @@ if [ -f .env ]; then
     echo "✓ .env already exists, skipping key generation"
 else
     API_KEY=$(openssl rand -hex 32)
-    echo "API_KEY=${API_KEY}" > .env
-    echo "✓ Generated .env with new API key"
+    UI_PASSWORD=$(openssl rand -hex 16)
+    cat > .env <<EOF
+API_KEY=${API_KEY}
+UI_USERNAME=admin
+UI_PASSWORD=${UI_PASSWORD}
+EOF
+    echo "✓ Generated .env with new API key and dashboard credentials"
 fi
 
 # Build and start
@@ -31,5 +36,8 @@ echo "=== Setup Complete ==="
 echo ""
 echo "Server running at: http://$(hostname -I | awk '{print $1}'):8742/sse"
 echo "API key:           $(grep API_KEY .env | cut -d= -f2)"
+echo ""
+echo "Dashboard:         http://$(hostname -I | awk '{print $1}'):8743"
+echo "Dashboard login:   $(grep UI_USERNAME .env | cut -d= -f2) / $(grep UI_PASSWORD .env | cut -d= -f2)"
 echo ""
 echo "Save that API key — you will need it to connect from your laptop."
