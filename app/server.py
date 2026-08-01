@@ -3,13 +3,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 import uvicorn
-from bson import ObjectId
-from bson.errors import InvalidId
 from fastmcp import FastMCP
 from starlette.responses import JSONResponse
 
 from app.config import settings
 from app.database import close_client, get_db
+from app.formatting import format_doc, parse_id
 
 
 @asynccontextmanager
@@ -38,20 +37,6 @@ class BearerAuthMiddleware:
         await self.app(scope, receive, send)
 
 
-def _format(doc: dict) -> dict:
-    doc["id"] = str(doc.pop("_id"))
-    doc["created_at"] = doc["created_at"].isoformat()
-    doc["updated_at"] = doc["updated_at"].isoformat()
-    return doc
-
-
-def _parse_id(entry_id: str) -> ObjectId:
-    try:
-        return ObjectId(entry_id)
-    except (InvalidId, Exception):
-        raise ValueError(f"Invalid entry ID: {entry_id}")
-
-
 @mcp.tool()
 async def create_entry(
     source: str,
@@ -72,7 +57,7 @@ async def create_entry(
     }
     result = await db.entries.insert_one(doc)
     created = await db.entries.find_one({"_id": result.inserted_id})
-    return _format(created)
+    return format_doc(created)
 
 
 @mcp.tool()
@@ -92,7 +77,7 @@ async def list_entries(
 
     total = await db.entries.count_documents(query)
     cursor = db.entries.find(query).sort("created_at", -1).skip(skip).limit(limit)
-    items = [_format(doc) async for doc in cursor]
+    items = [format_doc(doc) async for doc in cursor]
     return {"total": total, "items": items}
 
 
@@ -100,10 +85,10 @@ async def list_entries(
 async def get_entry(entry_id: str) -> dict:
     """Retrieve a single entry by its ID."""
     db = get_db()
-    doc = await db.entries.find_one({"_id": _parse_id(entry_id)})
+    doc = await db.entries.find_one({"_id": parse_id(entry_id)})
     if not doc:
         raise ValueError(f"Entry not found: {entry_id}")
-    return _format(doc)
+    return format_doc(doc)
 
 
 @mcp.tool()
@@ -128,20 +113,20 @@ async def update_entry(
     db = get_db()
     updates["updated_at"] = datetime.now(timezone.utc)
     result = await db.entries.find_one_and_update(
-        {"_id": _parse_id(entry_id)},
+        {"_id": parse_id(entry_id)},
         {"$set": updates},
         return_document=True,
     )
     if not result:
         raise ValueError(f"Entry not found: {entry_id}")
-    return _format(result)
+    return format_doc(result)
 
 
 @mcp.tool()
 async def delete_entry(entry_id: str) -> dict:
     """Delete an entry by its ID."""
     db = get_db()
-    result = await db.entries.delete_one({"_id": _parse_id(entry_id)})
+    result = await db.entries.delete_one({"_id": parse_id(entry_id)})
     if result.deleted_count == 0:
         raise ValueError(f"Entry not found: {entry_id}")
     return {"deleted": True, "id": entry_id}

@@ -16,6 +16,23 @@ services:
       MONGODB_URI: mongodb://mongo:27017
       MONGODB_DB: ai_data_store
       API_KEY: ${API_KEY}
+      UI_USERNAME: ${UI_USERNAME:-admin}
+      UI_PASSWORD: ${UI_PASSWORD}
+    depends_on:
+      - mongo
+
+  web:
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "app.web"]
+    ports:
+      - "8743:8743"
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DB: ai_data_store
+      API_KEY: ${API_KEY}
+      UI_USERNAME: ${UI_USERNAME:-admin}
+      UI_PASSWORD: ${UI_PASSWORD}
     depends_on:
       - mongo
 
