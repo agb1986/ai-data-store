@@ -38,14 +38,12 @@ class BearerAuthMiddleware:
         await self.app(scope, receive, send)
 
 
-@mcp.tool()
-async def create_entry(
+async def _create_entry(
     source: str,
     description: str,
     data: dict[str, Any],
     keywords: list[str] = [],
 ) -> dict:
-    """Store a new data entry produced by an AI agent."""
     db = get_db()
     now = datetime.now(timezone.utc)
     doc = {
@@ -59,6 +57,17 @@ async def create_entry(
     result = await db.entries.insert_one(doc)
     created = await db.entries.find_one({"_id": result.inserted_id})
     return format_doc(created)
+
+
+@mcp.tool()
+async def create_entry(
+    source: str,
+    description: str,
+    data: dict[str, Any],
+    keywords: list[str] = [],
+) -> dict:
+    """Store a new data entry produced by an AI agent."""
+    return await _create_entry(source, description, data, keywords)
 
 
 @mcp.tool()
@@ -147,7 +156,7 @@ async def create_entry_endpoint(request: Request) -> JSONResponse:
     except KeyError as e:
         return JSONResponse({"error": f"Missing required field: {e.args[0]}"}, status_code=400)
 
-    entry = await create_entry(
+    entry = await _create_entry(
         source=source,
         description=description,
         data=data,
