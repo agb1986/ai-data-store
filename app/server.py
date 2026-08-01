@@ -4,6 +4,7 @@ from typing import Any
 
 import uvicorn
 from fastmcp import FastMCP
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.config import settings
@@ -132,7 +133,31 @@ async def delete_entry(entry_id: str) -> dict:
     return {"deleted": True, "id": entry_id}
 
 
+async def create_entry_endpoint(request: Request) -> JSONResponse:
+    """REST equivalent of create_entry, for callers that can't speak MCP (e.g. hook scripts)."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    try:
+        source = body["source"]
+        description = body["description"]
+        data = body["data"]
+    except KeyError as e:
+        return JSONResponse({"error": f"Missing required field: {e.args[0]}"}, status_code=400)
+
+    entry = await create_entry(
+        source=source,
+        description=description,
+        data=data,
+        keywords=body.get("keywords", []),
+    )
+    return JSONResponse(entry, status_code=201)
+
+
 if __name__ == "__main__":
     app = mcp.http_app(transport="sse")
+    app.add_route("/entries", create_entry_endpoint, methods=["POST"])
     app.add_middleware(BearerAuthMiddleware)
     uvicorn.run(app, host="0.0.0.0", port=8742)
