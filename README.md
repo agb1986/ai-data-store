@@ -46,6 +46,8 @@ git pull
 docker compose up -d --build
 ```
 
+GitHub Actions runs tests + ruff on every PR (`.github/workflows/ci.yml`) and builds + pushes the image to GHCR on every merge to main (`.github/workflows/docker.yml`). To consume the prebuilt image on the CasaOS host instead of building locally, point the `api`/`web` services at `ghcr.io/agb1986/ai-data-store:latest` (already the `image:` in `docker-compose.yml`) and run `docker compose pull && docker compose up -d` — the local `build:` fallback keeps working either way.
+
 ## Laptop setup
 
 Configure your MCP client with the server URL and API key printed during setup.

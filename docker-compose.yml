@@ -9,6 +9,7 @@ services:
 
   api:
     build: .
+    image: ghcr.io/agb1986/ai-data-store:latest
     restart: unless-stopped
     ports:
       - "8742:8742"
@@ -23,6 +24,7 @@ services:
 
   web:
     build: .
+    image: ghcr.io/agb1986/ai-data-store:latest
     restart: unless-stopped
     command: ["python", "-m", "app.web"]
     ports:
