@@ -111,4 +111,14 @@ curl -X POST http://<casaos-ip>:8742/entries \
   -d '{"source": "finance-agent", "description": "Verdict - MSFT", "keywords": ["MSFT", "verdict"], "data": {}}'
 ```
 
-Returns the created entry (`201`) or a `400` with an error message for a missing field or invalid JSON body.
+Returns the created entry (`201`) or a `400` with an error message for a missing or wrongly-typed field or invalid JSON body.
+
+## Development
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+ruff check .
+pytest
+```
+
+Tests run against an in-memory MongoDB (`mongomock-motor`) — no containers needed. CI runs the same two commands on every push and PR.
