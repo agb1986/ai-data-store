@@ -2,7 +2,7 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HOOK_NAME="${1:-log_finance_entry.py}"
+HOOK_NAME="${1:-log_artifact_entry.py}"
 HOOK_SRC="$REPO_ROOT/hooks/$HOOK_NAME"
 HOOK_DEST_DIR="$HOME/.claude/hooks"
 HOOK_DEST="$HOOK_DEST_DIR/$HOOK_NAME"

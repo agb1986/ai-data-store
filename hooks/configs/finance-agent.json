@@ -1,0 +1,76 @@
+{
+  "source": "finance-agent",
+  "rules": [
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/verdict_(?P<ticker>[^_]+)_[^/]*\\.json$",
+      "description": [
+        "Verdict - {content.symbol} ({content.verdict.winner}, {content.verdict.confidence} confidence)",
+        "Verdict - {ticker}"
+      ],
+      "keywords": ["{ticker}", "{skill}", "verdict"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/debate_(?P<ticker>[^_]+)_[^/]*\\.json$",
+      "description": [
+        "Debate - {content.symbol} ({content.rounds} rounds)",
+        "Debate - {ticker}"
+      ],
+      "keywords": ["{ticker}", "{skill}", "debate"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/panel_(?P<ticker>[^_]+)_[^/]*\\.json$",
+      "description": [
+        "Panel analysis - {content.symbol}",
+        "Panel analysis - {ticker}"
+      ],
+      "keywords": ["{ticker}", "{skill}", "panel"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/check_stock_(?P<ticker>[^_]+)_[^/]*\\.json$",
+      "description": [
+        "{content.name} ({content.symbol}) - ${content.price:,.2f} ({content.change_percent:+.2f}%)",
+        "{content.name} ({content.symbol}) price check",
+        "{ticker} price check"
+      ],
+      "keywords": ["{ticker}", "{skill}", "check_stock"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/check_crypto_(?P<ticker>[^_]+)_[^/]*\\.json$",
+      "description": [
+        "{content.name} ({content.symbol}) - ${content.price:,.2f} ({content.change_percent_24h:+.2f}% 24h)",
+        "{content.name} ({content.symbol}) price check",
+        "{ticker} price check"
+      ],
+      "keywords": ["{ticker}", "{skill}", "check_crypto"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/history_(?P<ticker>[^_]+)_(?P<period>[^_]+)_[^/]*\\.json$",
+      "description": "Price history - {ticker}",
+      "keywords": ["{ticker}", "{skill}", "history", "{period}"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/portfolio_[^/]*\\.json$",
+      "description": [
+        "Portfolio snapshot - {content.account_summary.currency} {content.account_summary.totalValue:,.2f}",
+        "Portfolio snapshot"
+      ],
+      "keywords": ["{skill}"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/news_results_[^/]*\\.json$",
+      "description": [
+        "News search - {content_length} articles",
+        "News search"
+      ],
+      "keywords": ["{skill}", "news_results"]
+    },
+    {
+      "pattern": "/skills/(?P<skill>[^/]+)/tmp/analysis_[^/]*\\.json$",
+      "description": [
+        "News analysis - {content_length} articles ranked",
+        "News analysis"
+      ],
+      "keywords": ["{skill}", "analysis"]
+    }
+  ]
+}
