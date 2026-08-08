@@ -76,19 +76,47 @@ tools=[{
 
 ## Claude Code hooks
 
-`hooks/` contains PostToolUse hook scripts that log agent activity into ai-data-store automatically, and `scripts/install_hook.sh` installs one into your global `~/.claude/settings.json`:
+`hooks/log_artifact_entry.py` is a generic PostToolUse hook that logs JSON artifacts produced by agent scripts into ai-data-store automatically. Install it once globally:
 
 ```bash
-./scripts/install_hook.sh log_finance_entry.py
+./scripts/install_hook.sh
 ```
 
 This copies the script to `~/.claude/hooks/` and registers it as a `command`-type `PostToolUse` hook, without touching any other hooks or settings already there — safe to re-run. It requires the `ai-data-store` MCP server to already be configured in `~/.claude.json` (see Laptop setup above), since the hook reads that config to find the server URL and API key.
 
-Run it with no argument to install the default `log_finance_entry.py`, or name a different script in `hooks/` to install that one instead. Hooks are self-filtering — each one only acts on the tool calls it recognizes and is a silent no-op otherwise, so it's safe to have installed even outside the project it targets.
+The hook fires on every tool call in every project, but only acts on Bash calls in projects that **opt in** by having a `.ai-data-store.json` config at their root; everywhere else it's a silent no-op. The convention: an artifact-producing script prints just the path of the JSON file it wrote, and the hook picks it up from stdout the moment it's created.
 
-| Hook | Fires on | Logs |
-|------|----------|------|
-| `log_finance_entry.py` | Bash calls in `finance-agent` whose stdout is the path to a known `skills/*/tmp/*.json` artifact (verdict, debate, panel, check_stock, check_crypto, price history, portfolio, news) — every artifact script in that repo prints just this path, so the hook reads the file straight off disk | A ticker/stage-aware description and keywords built from the artifact's content, e.g. `Verdict - MSFT (bear, medium confidence)` |
+The config declares how artifacts become entries — regex rules over the artifact path, with `str.format` templates for the description and keywords. Named regex groups (`{ticker}`) and dotted paths into the artifact JSON (`{content.verdict.winner}`) are both available; `description` takes a list of templates and uses the first whose fields all resolve, so richer descriptions degrade gracefully:
+
+```json
+{
+  "source": "finance-agent",
+  "rules": [
+    {
+      "pattern": "/tmp/verdict_(?P<ticker>[^_]+)_[^/]*\\.json$",
+      "description": [
+        "Verdict - {content.symbol} ({content.verdict.winner}, {content.verdict.confidence} confidence)",
+        "Verdict - {ticker}"
+      ],
+      "keywords": ["{ticker}", "verdict"]
+    }
+  ]
+}
+```
+
+Ready-made configs live in `hooks/configs/` — copy one to the target project's root:
+
+```bash
+cp hooks/configs/finance-agent.json <finance-agent-repo>/.ai-data-store.json
+```
+
+**Migrating from `log_finance_entry.py`** (the old finance-only hook): uninstall it, install the generic hook, and drop the config into the finance-agent repo:
+
+```bash
+./scripts/uninstall_hook.sh log_finance_entry.py
+./scripts/install_hook.sh
+cp hooks/configs/finance-agent.json <finance-agent-repo>/.ai-data-store.json
+```
 
 ## MCP tools
 
