@@ -35,6 +35,8 @@ used, falling back to the artifact filename. Keyword templates that fail to
 resolve are dropped, and duplicates are removed. {content_length} is
 available when the artifact's top level is a list, {filename} always.
 """
+from __future__ import annotations
+
 import json
 import os
 import re
