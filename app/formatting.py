@@ -13,5 +13,5 @@ def format_doc(doc: dict) -> dict:
 def parse_id(entry_id: str) -> ObjectId:
     try:
         return ObjectId(entry_id)
-    except (InvalidId, Exception):
-        raise ValueError(f"Invalid entry ID: {entry_id}")
+    except (InvalidId, TypeError):
+        raise ValueError(f"Invalid entry ID: {entry_id}") from None

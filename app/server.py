@@ -1,19 +1,24 @@
+import secrets
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import uvicorn
 from fastmcp import FastMCP
+from pydantic import BaseModel, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.config import settings
-from app.database import close_client, get_db
+from app.database import close_client, ensure_indexes, get_db
 from app.formatting import format_doc, parse_id
+
+MAX_LIMIT = 100
 
 
 @asynccontextmanager
 async def lifespan(server: FastMCP):
+    await ensure_indexes()
     yield
     await close_client()
 
@@ -31,7 +36,8 @@ class BearerAuthMiddleware:
         if scope["type"] == "http":
             headers = dict(scope.get("headers", []))
             auth = headers.get(b"authorization", b"").decode()
-            if not auth.startswith("Bearer ") or auth[7:] != settings.api_key:
+            token = auth[7:] if auth.startswith("Bearer ") else ""
+            if not secrets.compare_digest(token.encode(), settings.api_key.encode()):
                 response = JSONResponse({"error": "Unauthorized"}, status_code=401)
                 await response(scope, receive, send)
                 return
@@ -42,14 +48,14 @@ async def _create_entry(
     source: str,
     description: str,
     data: dict[str, Any],
-    keywords: list[str] = [],
+    keywords: list[str] | None = None,
 ) -> dict:
     db = get_db()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     doc = {
         "source": source,
         "description": description,
-        "keywords": keywords,
+        "keywords": keywords or [],
         "data": data,
         "created_at": now,
         "updated_at": now,
@@ -64,7 +70,7 @@ async def create_entry(
     source: str,
     description: str,
     data: dict[str, Any],
-    keywords: list[str] = [],
+    keywords: list[str] | None = None,
 ) -> dict:
     """Store a new data entry produced by an AI agent."""
     return await _create_entry(source, description, data, keywords)
@@ -78,6 +84,8 @@ async def list_entries(
     skip: int = 0,
 ) -> dict:
     """List stored entries. Optionally filter by source agent or keywords."""
+    limit = max(1, min(limit, MAX_LIMIT))
+    skip = max(0, skip)
     db = get_db()
     query: dict = {}
     if source:
@@ -121,7 +129,7 @@ async def update_entry(
     if not updates:
         raise ValueError("No fields provided to update")
     db = get_db()
-    updates["updated_at"] = datetime.now(timezone.utc)
+    updates["updated_at"] = datetime.now(UTC)
     result = await db.entries.find_one_and_update(
         {"_id": parse_id(entry_id)},
         {"$set": updates},
@@ -142,6 +150,13 @@ async def delete_entry(entry_id: str) -> dict:
     return {"deleted": True, "id": entry_id}
 
 
+class EntryPayload(BaseModel):
+    source: str
+    description: str
+    data: dict[str, Any]
+    keywords: list[str] = []
+
+
 async def create_entry_endpoint(request: Request) -> JSONResponse:
     """REST equivalent of create_entry, for callers that can't speak MCP (e.g. hook scripts)."""
     try:
@@ -150,17 +165,19 @@ async def create_entry_endpoint(request: Request) -> JSONResponse:
         return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
 
     try:
-        source = body["source"]
-        description = body["description"]
-        data = body["data"]
-    except KeyError as e:
-        return JSONResponse({"error": f"Missing required field: {e.args[0]}"}, status_code=400)
+        payload = EntryPayload.model_validate(body)
+    except ValidationError as e:
+        errors = "; ".join(
+            f"{'.'.join(str(loc) for loc in err['loc']) or 'body'}: {err['msg']}"
+            for err in e.errors()
+        )
+        return JSONResponse({"error": errors}, status_code=400)
 
     entry = await _create_entry(
-        source=source,
-        description=description,
-        data=data,
-        keywords=body.get("keywords", []),
+        source=payload.source,
+        description=payload.description,
+        data=payload.data,
+        keywords=payload.keywords,
     )
     return JSONResponse(entry, status_code=201)
 
